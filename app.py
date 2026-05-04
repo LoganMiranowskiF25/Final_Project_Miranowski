@@ -207,21 +207,47 @@ elif choice == "Expiration Alert":
                 st.error(f"Expired: {name} ({part_number})")
 
 # ---------------- API ----------------
+# USED FAA AIRCRAFT REGISTRY BECAUSE THERE IS
+# NO PUBLIC API FOR AIRCRAFT PARTS. 
+# SIMPLY A DEMONSTRATION OF INTEGRATED API.
 elif choice == "Aircraft Parts API Lookup":
-    st.subheader("Parts API")
+    st.subheader("FAA Aircraft Registry Lookup")
 
-    part_number = st.text_input("Enter Part Number")
+    st.info("Enter an FAA tail number (N-number) to look up a registered aircraft.")
+    tail_number = st.text_input("Enter Tail Number (e.g. N12345)")
 
     if st.button("Fetch"):
-        result = fetch_part_info(part_number)
-
-        if result:
-            st.success("Found")
-            st.write(f"Part#: {result['part_number']}")
-            st.write(f"Name: {result['name']}")
-            st.write(f"Category: {result['category']}")
-            st.write(f"Price: ${result['price']:.2f}")
+        if not tail_number.strip():
+            st.warning("Please enter a tail number.")
         else:
-            st.error("Not found")
+            result = fetch_part_info(tail_number.strip())
+
+            if result:
+                st.success("Aircraft found in FAA Registry.")
+                st.write(f"**Tail Number:** {result['part_number']}")
+                st.write(f"**Name:** {result['name']}")
+                st.write(f"**Category:** {result['category']}")
+                st.write(f"**Time Sensitive:** {'Yes' if result['time_sensitive'] else 'No'}")
+                st.write(f"**Suggested Reorder Level:** {result['reorder_level']}")
+
+                if st.button("Add to Inventory"):
+                    c.execute("""
+                        INSERT OR IGNORE INTO inventory
+                        (part_number, name, quantity, category, price, expiration, reorder_level, time_sensitive)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        result['part_number'],
+                        result['name'],
+                        1,
+                        result['category'],
+                        result['price'],
+                        None,
+                        result['reorder_level'],
+                        int(result['time_sensitive'])
+                    ))
+                    conn.commit()
+                    st.success("Added to inventory!")
+            else:
+                st.error("Aircraft not found or invalid tail number.")
 
 conn.close()
