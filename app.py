@@ -223,31 +223,36 @@ elif choice == "Aircraft Parts API Lookup":
             result = fetch_part_info(tail_number.strip())
 
             if result:
-                st.success("Aircraft found in FAA Registry.")
-                st.write(f"**Tail Number:** {result['part_number']}")
-                st.write(f"**Name:** {result['name']}")
-                st.write(f"**Category:** {result['category']}")
-                st.write(f"**Time Sensitive:** {'Yes' if result['time_sensitive'] else 'No'}")
-                st.write(f"**Suggested Reorder Level:** {result['reorder_level']}")
-
-                if st.button("Add to Inventory"):
-                    c.execute("""
-                        INSERT OR IGNORE INTO inventory
-                        (part_number, name, quantity, category, price, expiration, reorder_level, time_sensitive)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        result['part_number'],
-                        result['name'],
-                        1,
-                        result['category'],
-                        result['price'],
-                        None,
-                        result['reorder_level'],
-                        int(result['time_sensitive'])
-                    ))
-                    conn.commit()
-                    st.success("Added to inventory!")
+                st.session_state["api_result"] = result
             else:
                 st.error("Aircraft not found or invalid tail number.")
+
+    if "api_result" in st.session_state:
+        result = st.session_state["api_result"]
+        st.success("Aircraft found in FAA Registry.")
+        st.write(f"**Tail Number:** {result['part_number']}")
+        st.write(f"**Name:** {result['name']}")
+        st.write(f"**Category:** {result['category']}")
+        st.write(f"**Time Sensitive:** {'Yes' if result['time_sensitive'] else 'No'}")
+        st.write(f"**Suggested Reorder Level:** {result['reorder_level']}")
+
+        if st.button("Add to Inventory"):
+            c.execute("""
+                INSERT OR IGNORE INTO inventory
+                (part_number, name, quantity, category, price, expiration, reorder_level, time_sensitive)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                result['part_number'],
+                result['name'],
+                1,
+                result['category'],
+                result['price'],
+                None,
+                result['reorder_level'],
+                int(result['time_sensitive'])
+            ))
+            conn.commit()
+            st.success("Added to inventory!")
+            del st.session_state["api_result"]
 
 conn.close()
